@@ -5,7 +5,13 @@ const pool = require("./db");
 const bcrypt = require("bcrypt");
 const session = require("express-session");
 
+const path = require("node:path");
+const fs = require("node:fs");
+const DatabaseSessionStore = require("./session-store");
 const app = express();
+const production = process.env.NODE_ENV === "production";
+const sessionStore = new DatabaseSessionStore(pool);
+if (production) app.set("trust proxy", 1);
 const PORT = Number(process.env.PORT || 3002);
 
 function isValidDate(date) {
@@ -24,12 +30,38 @@ function isValidDate(date) {
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_ORIGIN || "http://localhost:5173",
+    origin: process.env.FRONTEND_ORIGIN || process.env.RENDER_EXTERNAL_URL || "http://localhost:5173",
     credentials: true,
   }),
 );
 
-app.use(express.json());
+// A API pública usa /api; os caminhos locais antigos continuam disponíveis.
+app.use((req, res, next) => {
+  if (req.url === "/api" || req.url.startsWith("/api/") || req.url.startsWith("/api?")) {
+    req.url = req.url.slice(4) || "/";
+  }
+  next();
+});
+app.use(express.json({ limit: "32kb" }));
+
+// Limite por IP, em memória, para reduzir tentativas repetidas de autenticação.
+const authAttempts = new Map();
+const resetAttempts = setInterval(() => authAttempts.clear(), 15 * 60 * 1000);
+resetAttempts.unref();
+app.use((req, res, next) => {
+  if (req.method !== "POST" || !["/auth/login", "/auth/register"].includes(req.path)) return next();
+  const key = req.ip;
+  const count = (authAttempts.get(key) || 0) + 1;
+  if (!authAttempts.has(key) && authAttempts.size >= 10000) {
+    return res.status(429).json({ message: "Tente novamente em alguns minutos." });
+  }
+  authAttempts.set(key, count);
+  if (count > 30) {
+    res.set("Retry-After", "900");
+    return res.status(429).json({ message: "Muitas tentativas. Aguarde até 15 minutos." });
+  }
+  next();
+});
 
 if (!process.env.SESSION_SECRET) {
   throw new Error("Configure SESSION_SECRET no arquivo .env.");
@@ -38,13 +70,14 @@ if (!process.env.SESSION_SECRET) {
 app.use(
   session({
     name: "fitlife.sid",
+    store: sessionStore,
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
       sameSite: "lax",
-      secure: false,
+      secure: production,
       maxAge: 1000 * 60 * 60 * 8,
     },
   }),
@@ -59,6 +92,19 @@ function requireAuth(req, res, next) {
 
   next();
 }
+
+if (production) {
+  const directory = path.join(__dirname, "../front-end/dist");
+  if (!fs.existsSync(path.join(directory, "index.html"))) {
+    throw new Error("Build do frontend ausente. Execute npm run build em front-end.");
+  }
+  app.use((req, res, next) => {
+    if (req.originalUrl.startsWith("/api")) return next();
+    return express.static(directory)(req, res, next);
+  });
+}
+
+app.get("/health", (req, res) => res.json({ status: "ok" }));
 
 app.get("/", (req, res) => {
   res.json({
@@ -472,7 +518,7 @@ app.post("/auth/logout", (req, res) => {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
-      secure: false,
+      secure: production,
     });
 
     return res.status(204).send();
@@ -689,6 +735,23 @@ app.get("/weekly-summary", requireAuth, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Servidor rodando em http://localhost:${PORT}`);
-});
+async function start() {
+  await sessionStore.initialize();
+  return new Promise((resolve, reject) => {
+    const server = app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Servidor rodando na porta ${server.address().port}`);
+      resolve(server);
+    });
+    server.on("error", reject);
+  });
+}
+
+if (require.main === module) {
+  start().catch(error => {
+    console.error("Falha ao iniciar servidor:", error.code || error.message);
+    sessionStore.close();
+    pool.end().finally(() => { process.exitCode = 1; });
+  });
+}
+
+module.exports = { app, start };
