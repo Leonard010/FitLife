@@ -4,7 +4,7 @@ Dashboard de hábitos e bem-estar para acompanhar hidratação, cardio, alimenta
 
 Projeto de estudo de desenvolvimento Full Stack de **Leonardo Sotilo**, reunindo interface React, API Node.js, autenticação por sessão e persistência em banco relacional.
 
-> **Status:** código disponível no GitHub e integração com TiDB configurada para desenvolvimento. A publicação do aplicativo na internet ainda está pendente.
+> **Status:** integração com TiDB funcionando e código preparado para hospedar frontend e API juntos. O serviço público ainda precisa ser criado e testado. Veja [DEPLOY.md](DEPLOY.md).
 
 ## Funcionalidades
 
@@ -124,7 +124,7 @@ No backend:
 npm test
 ```
 
-Os testes automatizados do backend usam banco e dependências simulados. Não substituem testes de integração com TiDB/MySQL nem verificam o fluxo real completo de login.
+Os testes do backend combinam handlers com dependências simuladas e um teste HTTP com Express, bcrypt e cookies reais. O banco e o atendimento estático são simulados; a integração final com TiDB/MySQL e o build hospedado precisa ser verificada separadamente.
 
 ## Calculadoras
 
@@ -134,11 +134,11 @@ Os testes automatizados do backend usam banco e dependências simulados. Não su
 
 As estimativas e os limites de configuração do app não são recomendações individuais de alimentação, hidratação ou exercício.
 
-## Publicação: etapa pendente
+## Publicação
 
-Enviar o código ao GitHub não publica o aplicativo. O plano de hospedagem em preparação é Render para o app/servidor e TiDB para o banco.
+O servidor suporta frontend compilado e API em um único endereço. Em produção, usa cookies seguros e sessões no banco; a tabela sessions é criada automaticamente na inicialização. Há um limite básico de tentativas de autenticação por IP.
 
-Antes do deploy, ainda é necessário configurar o atendimento do frontend e do prefixo `/api`, HTTPS, cookies e origem de produção, armazenamento persistente de sessões e proteção contra abuso de autenticação. Hoje as sessões ficam em memória e são perdidas quando o servidor reinicia.
+Siga o [guia de publicação no Render](DEPLOY.md) para configurar build, inicialização e variáveis de ambiente. A criação do serviço e a verificação com o TiDB real na hospedagem ainda precisam ser concluídas.
 
 ## O que pratiquei neste projeto
 
