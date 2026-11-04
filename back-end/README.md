@@ -153,7 +153,7 @@ Por padrão, o servidor usa http://localhost:3002. A rota `GET /` retorna uma me
 5. Rotas protegidas usam o usuário da sessão, sem aceitar `user_id` informado pelo cliente.
 6. O logout destrói a sessão e limpa o cookie.
 
-O cookie atual usa `httpOnly: true`, `sameSite: 'lax'`, `secure: false` e duração de 8 horas. As sessões usam o armazenamento padrão em memória: reiniciar o servidor desconecta os usuários.
+O cookie atual usa `httpOnly: true`, `sameSite: 'lax'`, `secure: false em desenvolvimento` e duração de 8 horas. As sessões são armazenadas na tabela sessions, criada automaticamente ao iniciar o servidor. Reiniciar o processo preserva sessões ainda válidas quando o banco e SESSION_SECRET permanecem os mesmos. Em produção, secure é true e o cookie exige HTTPS.
 
 ## Rotas
 
@@ -279,7 +279,7 @@ npm test
 
 O script usa `node:vm` para executar os handlers com Express, sessão e banco simulados. Verifica bloqueio sem sessão em rota protegida, datas inválidas, limites de água/cardio/metas, calorias de refeições, parâmetros SQL, filtro do proprietário e remoção de item inexistente.
 
-Não verifica o bcrypt real, a persistência de sessões, a conexão MySQL/TiDB nem todo o fluxo HTTP de cadastro e login. Para integração, execute o teste de conexão e use a interface com o banco configurado.
+Esse primeiro script não verifica bcrypt ou HTTP reais. O segundo script, detalhado na seção de produção, verifica cadastro, login e sessões por HTTP com banco simulado. Para integrar com o banco real, execute o teste de conexão e use a interface com o TiDB/MySQL configurado.
 
 ## Diagnóstico
 
@@ -289,13 +289,17 @@ Não verifica o bcrypt real, a persistência de sessões, a conexão MySQL/TiDB 
 | ER_ACCESS_DENIED_ERROR | Usuário, senha e permissões |
 | Falha de conexão | Host, porta, rede e configuração TLS |
 | E-mail já cadastrado | Use a conta existente ou outro e-mail |
-| Sessão perdida ao reiniciar | Comportamento do armazenamento atual em memória |
+| Sessão perdida ao reiniciar | Confira persistência no banco, validade do cookie e estabilidade de SESSION_SECRET |
 | Falha no /api pelo frontend | Backend ativo em 3002 e uso do servidor Vite |
 
 Uma conta do MySQL local não aparece automaticamente no TiDB. Para começar com um banco novo, cadastre a conta pela interface; preservar histórico exige transferência separada.
 
-## Antes da publicação
+## Produção
 
-A configuração atual atende desenvolvimento local. Para hospedar, ainda é necessário definir HTTPS e cookies de produção, proxy confiável quando aplicável, origem permitida, armazenamento persistente de sessões, proteção contra abuso de login e encaminhamento de `/api` junto ao frontend.
+Siga [DEPLOY.md](../DEPLOY.md). Com NODE_ENV=production, o servidor entrega front-end/dist, aceita o prefixo /api, reconhece HTTPS pelo proxy e usa cookies Secure. As rotas antigas continuam disponíveis para desenvolvimento.
 
-O servidor atual não serve os arquivos de `front-end/dist` e não possui rotas com prefixo `/api`. Esses pontos precisam ser tratados na configuração de publicação.
+A tabela sessions armazena o identificador, a expiração e os dados da sessão. A inicialização cria a tabela se necessário e remove sessões expiradas; uma limpeza é executada a cada hora enquanto o processo está ativo. get, set, touch e destroy usam consultas parametrizadas.
+
+Login e cadastro recebem um limite básico por IP de 30 tentativas por janela em memória de até 15 minutos. O contador reinicia com o processo e não é compartilhado entre instâncias.
+
+O teste tests/production.cjs acrescenta HTTP e bcrypt reais, prefixo /api, cookie seguro, recuperação de sessão após reiniciar o app, logout e limite de tentativas. Usa banco e atendimento estático simulados; não substitui a verificação do TiDB e do build real no Render.
