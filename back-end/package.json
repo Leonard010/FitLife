@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node tests/routes.cjs",
+    "test": "node tests/routes.cjs && node tests/production.cjs",
     "dev": "node --watch server.js",
     "start": "node server.js",
     "migrate": "node migrate.js"
