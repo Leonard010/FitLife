@@ -131,6 +131,6 @@ O proxy mantém o endereço do backend fora do código do navegador e permite te
 
 ## Publicação
 
-O build gera somente o frontend. A hospedagem precisa atender os arquivos estáticos e encaminhar `/api` ao backend removendo o prefixo, ou adaptar a integração de forma equivalente.
+O backend está preparado para servir o build de dist/ em produção e aceitar chamadas /api no mesmo endereço. O proxy do Vite permanece restrito ao desenvolvimento.
 
-O proxy do Vite funciona no desenvolvimento; ele não é incluído no conteúdo de `dist/`. A configuração pública ainda está pendente.
+Siga [DEPLOY.md](../DEPLOY.md) para criar e configurar o serviço público. A validação final no Render e em um celular fora do Wi-Fi ainda precisa ser feita.
