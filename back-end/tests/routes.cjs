@@ -3,8 +3,8 @@ const routes=new Map();const calls=[];let rows=[];let mutation={affectedRows:1};
 const app={use(){},listen(){}};for(const method of ['get','post','put','patch','delete'])app[method]=(path,...handlers)=>routes.set(method+':'+path,handlers);
 const express=()=>app;express.json=()=>()=>{};
 vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname, '../server.js'),'utf8'),{
- require(name){if(name==='express')return express;if(name==='cors'||name==='express-session')return ()=>()=>{};if(name==='./db')return {execute:async(sql,args)=>{calls.push([sql,args]);assert.equal((sql.match(/\?/g)||[]).length,args.length);return [/^\s*SELECT/.test(sql)?rows:mutation];}};if(name==='bcrypt')return {};return require(name);},
- process:{env:{SESSION_SECRET:'test'}},console,Buffer,
+ require(name){if(name==='express')return express;if(name==='./session-store')return class {};if(name==='cors'||name==='express-session')return ()=>()=>{};if(name==='./db')return {execute:async(sql,args)=>{calls.push([sql,args]);assert.equal((sql.match(/\?/g)||[]).length,args.length);return [/^\s*SELECT/.test(sql)?rows:mutation];}};if(name==='bcrypt')return {};return require(name);},
+ process:{env:{SESSION_SECRET:'test'}},console,Buffer,module:{exports:{}},setInterval:()=>({unref(){}}),
 });
 async function request(method,path,{body={},params={},query={},user='user-a'}={}){
  const req={body,params,query,session:user?{userId:user}:{}};let status=200;let output;
