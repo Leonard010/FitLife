@@ -81,6 +81,6 @@ npm run build
 
 Teste duas contas e dois dias diferentes, persistência após F5/reinício, adicionar/remover calorias e marcar/remover tarefas. Confira também uma porção de 150 g com 130 kcal/100 g: resultado 195 kcal.
 
-## Limitações de hospedagem
+## Hospedagem
 
-Esta entrega é para desenvolvimento e teste na rede local, ainda não foi publicada na internet. Sessões usam memória do servidor e terminam quando o backend reinicia. Antes de publicar: configurar HTTPS, armazenamento persistente de sessões, proteção contra abuso do login, origem de produção e proxy `/api` no servidor de hospedagem. `npm run build` gera o frontend estático, mas não publica o backend ou o MySQL. O Google Fonts é opcional; sem internet o app usa fontes locais de fallback.
+A configuração de produção foi acrescentada ao backend: frontend e API no mesmo endereço, cookies HTTPS e sessões armazenadas no banco. Para publicar e testar, siga [DEPLOY.md](DEPLOY.md). O roteiro de instalação local acima continua válido. Não defina NODE_ENV=production no ambiente local com Vite.
